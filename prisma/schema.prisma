@@ -1,0 +1,148 @@
+// Prisma Schema for DigitalGhar (SQLite)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  role          String    @default("CUSTOMER")
+  isVerified    Boolean   @default(false)
+  orders        Order[]
+  reviews       Review[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLogin     DateTime?
+}
+
+// Category model
+model Category {
+  id           String    @id @default(uuid())
+  name         String
+  slug         String    @unique
+  description  String?
+  icon         String?
+  parentId     String?
+  parent       Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children     Category[] @relation("CategoryHierarchy")
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  products     Product[]
+  createdAt    DateTime  @default(now())
+}
+
+// Product model
+model Product {
+  id                String    @id @default(uuid())
+  title             String
+  slug              String    @unique
+  shortDescription  String
+  longDescription   String
+  categoryId        String
+  category          Category  @relation(fields: [categoryId], references: [id])
+  price             Float
+  originalPrice     Float?
+  discountPercent   Int?
+  productType       String
+  ageGroup          String?
+  imageUrl          String
+  fileUrl           String
+  fileSize          Int?
+  previewUrl        String?
+  galleryImages     String?
+  isFeatured        Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  downloadCount     Int       @default(0)
+  viewCount         Int       @default(0)
+  ratingAvg         Float     @default(0)
+  ratingCount       Int       @default(0)
+  tags              String?
+  licenseType       String    @default("PERSONAL")
+  orderItems        OrderItem[]
+  reviews           Review[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// Order model
+model Order {
+  id                String        @id @default(uuid())
+  orderNumber       String        @unique
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  userEmail         String
+  totalAmount       Float
+  paymentStatus     String        @default("PENDING")
+  paymentMethod     String?
+  utrNumber         String?
+  orderStatus       String        @default("PENDING")
+  items             OrderItem[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  paidAt            DateTime?
+}
+
+// Order Item model
+model OrderItem {
+  id            String    @id @default(uuid())
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id])
+  productTitle  String
+  productPrice  Float
+  downloadUrl   String?
+  downloadLimit Int       @default(5)
+  downloadCount Int       @default(0)
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+// Review model
+model Review {
+  id                String    @id @default(uuid())
+  productId         String
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User      @relation(fields: [userId], references: [id])
+  rating            Int
+  reviewText        String?
+  isVerifiedPurchase Boolean  @default(true)
+  isApproved        Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+// Download log for auditing
+model DownloadLog {
+  id           String   @id @default(uuid())
+  userId       String
+  orderItemId  String
+  productId    String
+  ipAddress    String?
+  userAgent    String?
+  downloadedAt DateTime @default(now())
+
+  @@index([userId, productId, downloadedAt])
+}
+
+// Admin activity log
+model AdminLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  action     String
+  entityType String
+  entityId   String?
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
